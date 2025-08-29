@@ -1,0 +1,63 @@
+# AI图像生成器配置文件示例
+# 复制此文件为 config.toml 并修改相应配置
+
+[server]
+# 服务器端口号
+port = 8000
+# 图片存储目录
+images_dir = "public/static/images"
+# 最大重试次数
+max_retries = 3
+# 请求超时时间(秒)
+timeout = 30
+
+[api_keys]
+# ModelScope API 令牌 (用于翻译服务)
+# 从 https://www.modelscope.cn/ 获取
+model_scope_token = "your-model-scope-token"
+
+# OpenRouter API 密钥 (用于图像生成)  
+# 从 https://openrouter.ai/ 获取
+openrouter_api_key = "your-openrouter-api-key"
+
+[models]
+# ModelScope 翻译模型
+model_scope_model = "deepseek-ai/DeepSeek-V3.1"
+# 默认的 OpenRouter 图像生成模型
+default_openrouter_model = "google/gemini-2.5-flash-image-preview:free"
+
+[cloudflare_r2]
+# Cloudflare R2 存储配置 (可选，留空则仅使用本地存储)
+account_id = ""
+access_key_id = ""
+access_key_secret = ""
+endpoint = ""
+bucket = ""
+
+[cloudflare_d1]
+# Cloudflare D1 数据库配置 (用于存储图片记录)
+# 从 https://dash.cloudflare.com/ 获取
+account_id = "your-cloudflare-account-id"
+api_token = "your-cloudflare-api-token"
+database_id = "your-d1-database-id"
+database_name = "ai_images"
+
+[image_processing]
+# 图片最大宽度(像素)
+max_width = 1920
+# 图片最大高度(像素)
+max_height = 1080
+# 图片压缩质量 (1-100)
+quality = 85
+# 压缩格式 (jpeg 或 png)
+format = "jpeg"
+# 是否启用图片缩放
+enable_resize = true
+
+[logging]
+# 日志级别 (debug, info, warn, error)
+level = "info"
+# 日志格式 (text 或 json)
+format = "text"
+# 日志文件路径 (空表示输出到控制台)
+file = ""

@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:openrouter.ai)",
+      "Bash(pip show openai)",
+      "Bash(python test_openrouter.py)",
+      "Bash(pip install openai)",
+      "Bash(python test_image_generation.py)",
+      "Bash(python start_server.py)",
+      "Bash(go mod tidy)",
+      "Bash(go build -o ai-image-generator main.go)",
+      "Bash(go build -o test-client test_client.go)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
