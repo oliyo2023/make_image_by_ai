@@ -117,8 +117,8 @@ func getDefaultConfig() *Config {
 			Timeout:    30,
 		},
 		APIKeys: APIKeysConfig{
-			ModelScopeToken:  "ms-97290993-2317-4f65-82a9-cad949f6b2a0",
-			OpenRouterAPIKey: "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",
+			ModelScopeToken:  "", // 从环境变量 MODEL_SCOPE_TOKEN 获取
+			OpenRouterAPIKey: "", // 从环境变量 OPENROUTER_API_KEY 获取
 		},
 		Models: ModelsConfig{
 			ModelScopeModel:        "deepseek-ai/DeepSeek-V3.1",
