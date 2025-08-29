@@ -1,211 +1,188 @@
-# AI 图像生成器
+# Make AI Image
 
-一个基于 Go 语言开发的 AI 图像生成服务，支持中文提示词翻译和图像生成。
+一个基于 Go 语言开发的 AI 图像生成服务，支持中文提示词翻译和多种 AI 模型的图像生成。
 
-## 项目结构
+## 🚀 项目特色
 
+- **多语言支持**: 自动将中文提示词翻译为英文
+- **多模型支持**: 集成 ModelScope 和 OpenRouter 等多种 AI 服务
+- **双重存储**: 本地存储 + Cloudflare R2 云存储备份
+- **完整记录**: Cloudflare D1 数据库存储生成记录
+- **RESTful API**: 标准化的 HTTP API 接口
+- **无服务器架构**: 支持 Cloudflare Workers 部署
+
+## 📋 系统功能
+
+### 核心功能
+- AI 图像生成：支持多种 AI 模型生成高质量图像
+- 中文翻译：自动将中文提示词翻译为英文
+- 本地存储：生成的图片自动保存到本地目录
+- RESTful API：提供完整的 HTTP API 接口
+- 错误处理：完善的错误处理和日志记录
+
+### API 端点
+- `GET /health` - 健康检查
+- `POST /generate-image` - 生成图像
+- `POST /translate` - 翻译提示词
+- `GET /images` - 获取图像列表
+- `GET /static/*` - 静态文件服务
+- `GET /records` - 分页查询图片记录
+- `GET /records/{id}` - 获取单个记录
+
+## 🛠️ 技术栈
+
+### 后端 (Go)
+- **框架**: Gin v1.9.1
+- **AI 服务**: OpenAI API v1.41.1
+- **云服务**: AWS SDK v1.55.8
+- **工具库**: UUID v1.3.0, nfnt/resize
+
+### 前端支持 (Python)
+- **框架**: FastAPI ≥0.104.1
+- **服务器**: Uvicorn ≥0.24.0
+- **AI 集成**: OpenAI ≥1.3.0
+- **数据验证**: Pydantic ≥2.5.0
+
+### 云服务 (Cloudflare)
+- **计算**: Cloudflare Workers (TypeScript/Python)
+- **存储**: Cloudflare R2
+- **数据库**: Cloudflare D1
+- **前端**: Cloudflare Pages
+
+## 🚀 快速开始
+
+### 环境要求
+- Go 1.19+
+- Python 3.x (可选)
+- Node.js 18+ (用于 Cloudflare 部署)
+
+### 本地开发
+
+1. **克隆项目**
+```bash
+git clone https://github.com/YOUR_USERNAME/make_ai_image.git
+cd make_ai_image
 ```
-make_image_by_ai/
-├── config/
-│   └── config.go          # 配置管理
-├── models/
-│   └── models.go          # 数据模型定义
-├── services/
-│   └── image_service.go   # 图像生成服务
-├── handlers/
-│   └── handlers.go        # HTTP 处理器
-├── utils/
-│   └── utils.go           # 工具函数
-├── main.go                # 主程序入口
-├── test_client.go         # 测试客户端
-├── go.mod                 # Go 模块文件
-├── go.sum                 # Go 依赖校验
-├── Makefile               # 构建脚本
-├── CONFIG.md              # 配置说明文档
-└── public/
-    └── static/
-        └── images/        # 生成的图片存储目录
-```
 
-## 功能特性
-
-- 🎨 **AI 图像生成**：支持多种 AI 模型生成高质量图像
-- 🌐 **中文翻译**：自动将中文提示词翻译为英文
-- 💾 **本地存储**：生成的图片自动保存到本地
-- 🔧 **配置灵活**：支持环境变量配置
-- 📱 **RESTful API**：提供完整的 HTTP API 接口
-- 🛡️ **错误处理**：完善的错误处理和日志记录
-
-## 快速开始
-
-### 1. 安装依赖
-
+2. **安装依赖**
 ```bash
 go mod tidy
 ```
 
-### 2. 配置环境变量（可选）
-
-优先使用 TOML 配置文件：
+3. **配置环境变量**
 ```bash
-# 复制配置文件模板
+# 方法1: 使用配置文件
 cp config.example.toml config.toml
-# 编辑 config.toml 设置你的 API 密钥
-```
+# 编辑 config.toml 文件，填入您的 API 密钥
 
-或者使用环境变量（优先级更高）：
+# 方法2: 使用环境变量文件  
+cp .env.example .env
+# 编辑 .env 文件，填入您的 API 密钥
 
-```bash
-# Windows PowerShell
-$env:MODEL_SCOPE_TOKEN="your-model-scope-token"
-$env:OPENROUTER_API_KEY="your-openrouter-api-key"
-$env:PORT="8000"
-
-# Linux/macOS
+# 方法3: 直接设置环境变量
 export MODEL_SCOPE_TOKEN="your-model-scope-token"
 export OPENROUTER_API_KEY="your-openrouter-api-key"
 export PORT="8000"
 ```
 
-### 3. 运行服务
+**⚠️ 安全提醒**：
+- 🔐 **切勿**将真实的 API 密钥提交到代码仓库
+- 📝 使用 `.env` 或 `config.toml` 文件存储密钥（已在 .gitignore 中排除）
+- 🔄 定期轮换 API 密钥
+- 🛡️ 为不同环境使用不同的密钥
 
+4. **运行服务**
 ```bash
+# 开发模式
 go run main.go
-```
 
-服务将在 `http://localhost:8000` 启动。
-
-## API 接口
-
-### 健康检查
-```
-GET /health
-```
-
-### 图像生成
-```
-POST /generate-image
-Content-Type: application/json
-
-{
-  "prompt": "一只可爱的小猫",
-  "model": "google/gemini-2.5-flash-image-preview:free"
-}
-```
-
-### 文本翻译
-```
-POST /translate
-Content-Type: application/json
-
-{
-  "text": "一只可爱的小猫"
-}
-```
-
-### 图片列表
-```
-GET /images
-```
-
-### 图片记录查询
-```
-GET /records?page=1&limit=20&keyword=龙&model=google/gemini-2.5-flash-image-preview:free&date_from=2024-01-01&date_to=2024-12-31
-```
-
-查询参数：
-- `page`: 页码（默认1）
-- `limit`: 每页数量（默认20，最大100）
-- `keyword`: 关键词搜索（搜索原始提示词和英文提示词）
-- `model`: 模型筛选
-- `date_from`: 开始日期（YYYY-MM-DD）
-- `date_to`: 结束日期（YYYY-MM-DD）
-
-### 获取单个图片记录
-```
-GET /records/{id}
-```
-
-## 配置说明
-
-项目现已支持 TOML 格式的配置文件管理，提供更直观和结构化的配置方式。
-
-### 配置加载优先级
-1. **环境变量** (最高优先级)
-2. **TOML 配置文件** 
-3. **默认配置** (最低优先级)
-
-详细的配置说明请参考 [TOML_CONFIG.md](TOML_CONFIG.md) 文件。
-
-### 默认配置
-
-- **端口**: 8000
-- **图片目录**: `public/static/images`
-- **ModelScope 模型**: `deepseek-ai/DeepSeek-V3.1`
-- **OpenRouter 模型**: `google/gemini-2.5-flash-image-preview:free`
-
-## 测试
-
-运行测试客户端：
-
-```bash
-go run -tags testclient test_client.go
-```
-
-## 构建
-
-```bash
-# 构建主程序
+# 构建并运行
 go build -o ai-image-generator main.go
-
-# 构建测试客户端
-go build -tags testclient -o test-client test_client.go
+./ai-image-generator
 ```
 
-## 项目架构
+服务将在 http://localhost:8000 启动。
 
-### 模块化设计
+### Cloudflare 部署
 
-- **config**: 配置管理，支持环境变量和默认值
-- **models**: 数据模型定义，包含请求和响应结构
-- **services**: 业务逻辑层，处理图像生成和翻译
-- **handlers**: HTTP 处理器，处理 API 请求
-- **utils**: 工具函数，包含文件操作和图片处理
+详细部署说明请参考 [cloudflare-site/DEPLOYMENT.md](cloudflare-site/DEPLOYMENT.md)
 
-### 依赖注入
+## 📁 项目结构
 
-项目使用依赖注入模式，便于测试和维护：
-
-```go
-// 创建服务实例
-config := config.LoadConfig()
-imageService := services.NewImageService(config)
-handler := handlers.NewHandler(imageService)
+```
+├── config/                 # 配置管理
+├── handlers/              # HTTP 处理器
+├── models/                # 数据模型
+├── services/              # 业务服务
+│   ├── d1_service.go     # D1 数据库服务
+│   ├── image_service.go  # 图像生成服务
+│   └── r2_service.go     # R2 存储服务
+├── utils/                 # 工具函数
+├── cloudflare-site/       # Cloudflare 部署相关
+│   ├── worker/           # Workers 代码
+│   ├── pages/            # Pages 前端
+│   └── DEPLOYMENT.md     # 部署说明
+├── public/static/images/  # 本地图片存储
+├── main.go               # 主程序
+├── config.example.toml   # 配置文件示例
+└── README.md             # 项目说明
 ```
 
-## 开发说明
+## ⚙️ 配置说明
 
-### 添加新功能
+项目使用 TOML 格式配置文件，支持环境变量覆盖：
 
-1. 在 `models/` 中定义数据结构
-2. 在 `services/` 中实现业务逻辑
-3. 在 `handlers/` 中添加 HTTP 处理器
-4. 在 `main.go` 中注册路由
+### 主要配置段
+- `[server]` - 服务器配置
+- `[api_keys]` - API 密钥配置
+- `[models]` - AI 模型配置
+- `[cloudflare_r2]` - R2 存储配置
+- `[cloudflare_d1]` - D1 数据库配置
+- `[image_processing]` - 图像处理配置
+- `[logging]` - 日志配置
 
-### 错误处理
+详细配置说明请参考 [CONFIG.md](CONFIG.md) 和 [TOML_CONFIG.md](TOML_CONFIG.md)。
 
-所有错误都会返回适当的 HTTP 状态码和错误信息：
+## 🔒 安全规范
 
-```json
-{
-  "error": "错误描述"
-}
+- 使用环境变量保护敏感信息（API 密钥）
+- 禁止在日志中记录图片内容或 base64 数据
+- 智能文件命名避免中文字符
+- 完善的错误处理和容错机制
+
+## 🧪 测试
+
+```bash
+# 运行测试
+go test ./...
+
+# 生成测试覆盖率报告
+go test -cover ./...
 ```
 
-## 许可证
+## 📚 API 文档
 
-MIT License
+详细的 API 文档请参考 [API_DOCS.md](API_DOCS.md)。
 
-## 贡献
+## 🤝 贡献指南
 
-欢迎提交 Issue 和 Pull Request！
+1. Fork 本仓库
+2. 创建功能分支 (`git checkout -b feature/AmazingFeature`)
+3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
+4. 推送到分支 (`git push origin feature/AmazingFeature`)
+5. 打开 Pull Request
+
+## 📄 许可证
+
+本项目采用 MIT 许可证 - 查看 [LICENSE](LICENSE) 文件了解详情。
+
+## 🆘 问题反馈
+
+如果您遇到问题或有建议，请 [创建 Issue](https://github.com/YOUR_USERNAME/make_ai_image/issues)。
+
+## 🙏 致谢
+
+感谢以下开源项目：
+- [Gin](https://github.com/gin-gonic/gin) - HTTP Web 框架
+- [OpenAI Go](https://github.com/sashabaranov/go-openai) - OpenAI API 客户端
+- [Cloudflare](https://cloudflare.com) - 边缘计算服务
