@@ -1,0 +1,42 @@
+# 简化版 Dockerfile - 用于快速构建
+FROM golang:1.25-alpine AS builder
+
+# 设置工作目录
+WORKDIR /app
+
+# 安装基本工具
+RUN apk add --no-cache git ca-certificates
+
+# 设置Go代理（加速下载）
+ENV GOPROXY=https://goproxy.cn,direct
+ENV GO111MODULE=on
+
+# 复制Go模块文件
+COPY go.mod go.sum ./
+
+# 下载依赖
+RUN go mod download
+
+# 复制源代码
+COPY . .
+
+# 构建应用
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -ldflags="-w -s" -o ai-image-generator main.go
+
+# 生产阶段 - 使用scratch镜像（最小化）
+FROM scratch
+
+# 复制SSL证书
+COPY --from=builder /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/
+
+# 复制二进制文件
+COPY --from=builder /app/ai-image-generator /ai-image-generator
+
+# 复制配置模板
+COPY --from=builder /app/config.example.toml /config.example.toml
+
+# 暴露端口
+EXPOSE 8000
+
+# 启动应用
+CMD ["/ai-image-generator"]

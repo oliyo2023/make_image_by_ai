@@ -1,0 +1,94 @@
+version: '3.8'
+
+services:
+  ai-image-generator:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ai-image-generator
+    ports:
+      - "8000:8000"
+    environment:
+      # 服务器配置
+      - PORT=8000
+      - IMAGES_DIR=/app/public/static/images
+      - MAX_RETRIES=3
+      - TIMEOUT=30
+      
+      # API密钥 (请在.env文件中设置或通过环境变量传递)
+      - MODEL_SCOPE_TOKEN=${MODEL_SCOPE_TOKEN:-}
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      
+      # 模型配置
+      - MODEL_SCOPE_MODEL=${MODEL_SCOPE_MODEL:-deepseek-ai/DeepSeek-V3.1}
+      - DEFAULT_OPENROUTER_MODEL=${DEFAULT_OPENROUTER_MODEL:-google/gemini-2.5-flash-image-preview:free}
+      
+      # Cloudflare R2配置 (可选)
+      - CLOUDFLARE_R2_ACCOUNT_ID=${CLOUDFLARE_R2_ACCOUNT_ID:-}
+      - CLOUDFLARE_R2_ACCESS_KEY_ID=${CLOUDFLARE_R2_ACCESS_KEY_ID:-}
+      - CLOUDFLARE_R2_ACCESS_KEY_SECRET=${CLOUDFLARE_R2_ACCESS_KEY_SECRET:-}
+      - CLOUDFLARE_R2_ENDPOINT=${CLOUDFLARE_R2_ENDPOINT:-}
+      - CLOUDFLARE_R2_BUCKET=${CLOUDFLARE_R2_BUCKET:-}
+      
+      # Cloudflare D1配置
+      - CLOUDFLARE_D1_ACCOUNT_ID=${CLOUDFLARE_D1_ACCOUNT_ID:-}
+      - CLOUDFLARE_D1_API_TOKEN=${CLOUDFLARE_D1_API_TOKEN:-}
+      - CLOUDFLARE_D1_DATABASE_ID=${CLOUDFLARE_D1_DATABASE_ID:-}
+      - CLOUDFLARE_D1_DATABASE_NAME=${CLOUDFLARE_D1_DATABASE_NAME:-ai_images}
+      
+      # 图片处理配置
+      - MAX_WIDTH=${MAX_WIDTH:-1920}
+      - MAX_HEIGHT=${MAX_HEIGHT:-1080}
+      - QUALITY=${QUALITY:-85}
+      - FORMAT=${FORMAT:-jpeg}
+      - ENABLE_RESIZE=${ENABLE_RESIZE:-true}
+      
+      # 日志配置
+      - LOG_LEVEL=${LOG_LEVEL:-info}
+      - LOG_FORMAT=${LOG_FORMAT:-text}
+      - LOG_FILE=${LOG_FILE:-}
+    
+    volumes:
+      # 挂载图片存储目录
+      - ./public/static/images:/app/public/static/images
+      # 挂载日志目录
+      - ./logs:/app/logs
+      # 可选：挂载配置文件
+      # - ./config.toml:/app/config.toml:ro
+    
+    restart: unless-stopped
+    
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+    networks:
+      - ai-image-network
+
+  # 可选：添加Redis缓存
+  redis:
+    image: redis:7-alpine
+    container_name: ai-image-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    restart: unless-stopped
+    networks:
+      - ai-image-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  ai-image-network:
+    driver: bridge
+
+volumes:
+  redis_data:
+    driver: local

@@ -94,21 +94,104 @@ install:
 	$(GOGET) -u github.com/google/uuid
 	$(GOGET) -u github.com/sashabaranov/go-openai
 
+# Docker parameters
+DOCKER_IMAGE_NAME=ai-image-generator
+DOCKER_TAG=latest
+DOCKER_REGISTRY=
+
+# Docker build
+.PHONY: docker-build
+docker-build:
+	@echo "Building Docker image..."
+	docker build -t $(DOCKER_IMAGE_NAME):$(DOCKER_TAG) .
+
+# Docker run
+.PHONY: docker-run
+docker-run:
+	@echo "Running Docker container..."
+	docker run -d --name ai-image-generator -p 8000:8000 \
+		-v $$(pwd)/public/static/images:/app/public/static/images \
+		-v $$(pwd)/logs:/app/logs \
+		$(DOCKER_IMAGE_NAME):$(DOCKER_TAG)
+
+# Docker stop
+.PHONY: docker-stop
+docker-stop:
+	@echo "Stopping Docker container..."
+	docker stop ai-image-generator || true
+	docker rm ai-image-generator || true
+
+# Docker logs
+.PHONY: docker-logs
+docker-logs:
+	@echo "Showing Docker container logs..."
+	docker logs -f ai-image-generator
+
+# Docker compose up
+.PHONY: docker-compose-up
+docker-compose-up:
+	@echo "Starting services with docker-compose..."
+	docker-compose up -d
+
+# Docker compose down
+.PHONY: docker-compose-down
+docker-compose-down:
+	@echo "Stopping services with docker-compose..."
+	docker-compose down
+
+# Docker compose logs
+.PHONY: docker-compose-logs
+docker-compose-logs:
+	@echo "Showing docker-compose logs..."
+	docker-compose logs -f
+
+# Setup Docker environment
+.PHONY: setup-docker-env
+setup-docker-env:
+	@echo "Setting up Docker environment..."
+	@if not exist .env (\
+		copy .env.example .env && \
+		echo "Environment file created: .env" && \
+		echo "Please edit .env to set your API keys"\
+	) else (\
+		echo "Environment file already exists: .env"\
+	)
+	@if not exist public\static\images mkdir public\static\images
+	@if not exist logs mkdir logs
+
+# Clean Docker
+.PHONY: docker-clean
+docker-clean:
+	@echo "Cleaning Docker images and containers..."
+	docker system prune -f
+	docker image prune -f
+
 # Help
 .PHONY: help
 help:
 	@echo "Available targets:"
-	@echo "  all          - Build for current platform (default)"
-	@echo "  build        - Build for current platform"
-	@echo "  run          - Run the application"
-	@echo "  clean        - Clean build files"
-	@echo "  deps         - Install dependencies"
-	@echo "  setup-config - Create config.toml from template"
-	@echo "  check-config - Validate configuration"
-	@echo "  clean-config - Remove config.toml"
-	@echo "  test         - Run tests"
-	@echo "  build-win    - Build for Windows"
-	@echo "  build-linux  - Build for Linux"
-	@echo "  build-mac    - Build for macOS"
-	@echo "  install      - Install required packages"
-	@echo "  help         - Show this help message"
+	@echo "  all                  - Build for current platform (default)"
+	@echo "  build                - Build for current platform"
+	@echo "  run                  - Run the application"
+	@echo "  clean                - Clean build files"
+	@echo "  deps                 - Install dependencies"
+	@echo "  setup-config         - Create config.toml from template"
+	@echo "  check-config         - Validate configuration"
+	@echo "  clean-config         - Remove config.toml"
+	@echo "  test                 - Run tests"
+	@echo "  build-win            - Build for Windows"
+	@echo "  build-linux          - Build for Linux"
+	@echo "  build-mac            - Build for macOS"
+	@echo "  install              - Install required packages"
+	@echo ""
+	@echo "Docker targets:"
+	@echo "  docker-build         - Build Docker image"
+	@echo "  docker-run           - Run Docker container"
+	@echo "  docker-stop          - Stop and remove Docker container"
+	@echo "  docker-logs          - Show Docker container logs"
+	@echo "  docker-compose-up    - Start services with docker-compose"
+	@echo "  docker-compose-down  - Stop services with docker-compose"
+	@echo "  docker-compose-logs  - Show docker-compose logs"
+	@echo "  setup-docker-env     - Setup Docker environment files"
+	@echo "  docker-clean         - Clean Docker images and containers"
+	@echo "  help                 - Show this help message"
