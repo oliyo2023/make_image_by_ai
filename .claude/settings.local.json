@@ -10,7 +10,15 @@
       "Bash(python start_server.py)",
       "Bash(go mod tidy)",
       "Bash(go build -o ai-image-generator main.go)",
-      "Bash(go build -o test-client test_client.go)"
+      "Bash(go build -o test-client test_client.go)",
+      "Bash(go run main.go)",
+      "Bash(timeout 10 curl -s http://localhost:8000/health)",
+      "Bash(curl -X POST http://localhost:8000/translate -H \"Content-Type: application/json\" -d \"{\"\"text\"\":\"\"一只可爱的小猫\"\"}\")",
+      "Bash(curl -X POST http://localhost:8000/generate-image -H \"Content-Type: application/json\" -d \"{\"\"prompt\"\":\"\"a cute cat\"\"}\")",
+      "Bash(cat pubspec.yaml)",
+      "Bash(flutter pub get)",
+      "Bash(flutter run)",
+      "Bash(flutter run -d windows)"
     ],
     "deny": [],
     "ask": []

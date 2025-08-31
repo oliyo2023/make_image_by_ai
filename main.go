@@ -25,7 +25,7 @@ func main() {
 	handler := handlers.NewHandler(imageService)
 
 	// 设置Gin模式
-	gin.SetMode(gin.ReleaseMode)
+	gin.SetMode(gin.DebugMode)
 
 	// 创建路由
 	r := gin.Default()
