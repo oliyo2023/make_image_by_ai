@@ -111,6 +111,11 @@ func (d *D1Service) initDatabase() error {
 		log.Printf("警告: 创建索引失败: %v", err)
 	}
 
+	// 初始化编辑相关表
+	if err := d.initEditDatabase(); err != nil {
+		log.Printf("警告: 初始化编辑数据库表失败: %v", err)
+	}
+
 	log.Println("D1数据库表初始化完成")
 	return nil
 }
@@ -464,4 +469,323 @@ func (d *D1Service) querySQLWithParams(sql string, params []interface{}) ([]map[
 	}
 
 	return []map[string]interface{}{}, nil
+}
+
+// ===== 图片编辑记录相关方法 =====
+
+// SaveEditRecord 保存图片编辑记录
+func (d *D1Service) SaveEditRecord(record *models.ImageEditRecord) error {
+	// 生成任务ID
+	if record.TaskID == "" {
+		record.TaskID = fmt.Sprintf("edit_%d", time.Now().UnixNano())
+	}
+
+	sql := `
+		INSERT INTO image_edit_records
+		(original_image_id, edit_type, edit_prompt, input_image_urls, status, task_id, created_at, error_message)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+	`
+
+	params := []interface{}{
+		record.OriginalImageID,
+		string(record.EditType),
+		record.EditPrompt,
+		record.InputImageURLs,
+		string(record.Status),
+		record.TaskID,
+		record.CreatedAt,
+		record.ErrorMessage,
+	}
+
+	if err := d.executeSQLWithParams(sql, params); err != nil {
+		return fmt.Errorf("保存编辑记录失败: %v", err)
+	}
+
+	log.Printf("编辑记录已保存到D1: TaskID=%s, Type=%s", record.TaskID, record.EditType)
+	return nil
+}
+
+// UpdateEditRecord 更新图片编辑记录
+func (d *D1Service) UpdateEditRecord(record *models.ImageEditRecord) error {
+	sql := `
+		UPDATE image_edit_records
+		SET status = ?, result_image_url = ?, local_path = ?, r2_url = ?,
+			file_size = ?, width = ?, height = ?, format = ?,
+			error_message = ?, completed_at = ?
+		WHERE task_id = ?
+	`
+
+	params := []interface{}{
+		string(record.Status),
+		record.ResultImageURL,
+		record.LocalPath,
+		record.R2URL,
+		record.FileSize,
+		record.Width,
+		record.Height,
+		record.Format,
+		record.ErrorMessage,
+		record.CompletedAt,
+		record.TaskID,
+	}
+
+	if err := d.executeSQLWithParams(sql, params); err != nil {
+		return fmt.Errorf("更新编辑记录失败: %v", err)
+	}
+
+	return nil
+}
+
+// GetEditRecordByTaskID 根据任务ID获取编辑记录
+func (d *D1Service) GetEditRecordByTaskID(taskID string) (*models.EditTaskStatusResponse, error) {
+	sql := "SELECT * FROM image_edit_records WHERE task_id = ?"
+	results, err := d.querySQLWithParams(sql, []interface{}{taskID})
+	if err != nil {
+		return nil, fmt.Errorf("查询编辑记录失败: %v", err)
+	}
+
+	if len(results) == 0 {
+		return nil, fmt.Errorf("编辑记录不存在")
+	}
+
+	result := results[0]
+	response := &models.EditTaskStatusResponse{}
+
+	if id, ok := result["id"].(float64); ok {
+		response.ID = int(id)
+	}
+	if val, ok := result["task_id"].(string); ok {
+		response.TaskID = val
+	}
+	if val, ok := result["status"].(string); ok {
+		response.Status = models.EditStatus(val)
+	}
+	if val, ok := result["edit_type"].(string); ok {
+		response.EditType = models.EditType(val)
+	}
+	if val, ok := result["edit_prompt"].(string); ok {
+		response.EditPrompt = val
+	}
+	if val, ok := result["result_image_url"].(string); ok {
+		response.ResultImageURL = val
+	}
+	if val, ok := result["r2_url"].(string); ok {
+		response.R2URL = val
+	}
+	if val, ok := result["error_message"].(string); ok {
+		response.ErrorMessage = val
+	}
+	if val, ok := result["created_at"].(string); ok {
+		response.CreatedAt = val
+	}
+	if val, ok := result["completed_at"].(string); ok {
+		response.CompletedAt = val
+	}
+
+	// 计算进度百分比
+	switch response.Status {
+	case models.EditStatusPending:
+		response.Progress = 0
+	case models.EditStatusProcessing:
+		response.Progress = 50
+	case models.EditStatusCompleted:
+		response.Progress = 100
+	case models.EditStatusFailed:
+		response.Progress = -1
+	}
+
+	return response, nil
+}
+
+// GetEditRecords 获取编辑记录列表
+func (d *D1Service) GetEditRecords(req *models.EditRecordsRequest) (*models.EditRecordsResponse, error) {
+	// 设置默认值
+	if req.Page <= 0 {
+		req.Page = 1
+	}
+	if req.Limit <= 0 {
+		req.Limit = 20
+	}
+	if req.Limit > 100 {
+		req.Limit = 100
+	}
+
+	// 构建WHERE条件
+	var conditions []string
+	var params []interface{}
+
+	if req.EditType != "" {
+		conditions = append(conditions, "edit_type = ?")
+		params = append(params, string(req.EditType))
+	}
+
+	if req.Status != "" {
+		conditions = append(conditions, "status = ?")
+		params = append(params, string(req.Status))
+	}
+
+	if req.Keyword != "" {
+		conditions = append(conditions, "edit_prompt LIKE ?")
+		keyword := "%" + req.Keyword + "%"
+		params = append(params, keyword)
+	}
+
+	if req.DateFrom != "" {
+		conditions = append(conditions, "created_at >= ?")
+		params = append(params, req.DateFrom)
+	}
+
+	if req.DateTo != "" {
+		conditions = append(conditions, "created_at <= ?")
+		params = append(params, req.DateTo+" 23:59:59")
+	}
+
+	whereClause := ""
+	if len(conditions) > 0 {
+		whereClause = "WHERE " + strings.Join(conditions, " AND ")
+	}
+
+	// 查询总数
+	countSQL := fmt.Sprintf("SELECT COUNT(*) as total FROM image_edit_records %s", whereClause)
+	countResult, err := d.querySQLWithParams(countSQL, params)
+	if err != nil {
+		return nil, fmt.Errorf("查询总数失败: %v", err)
+	}
+
+	total := 0
+	if len(countResult) > 0 {
+		if totalVal, ok := countResult[0]["total"].(float64); ok {
+			total = int(totalVal)
+		}
+	}
+
+	// 查询数据
+	offset := (req.Page - 1) * req.Limit
+	dataSQL := fmt.Sprintf(`
+		SELECT * FROM image_edit_records %s
+		ORDER BY created_at DESC
+		LIMIT ? OFFSET ?
+	`, whereClause)
+
+	dataParams := append(params, req.Limit, offset)
+	results, err := d.querySQLWithParams(dataSQL, dataParams)
+	if err != nil {
+		return nil, fmt.Errorf("查询数据失败: %v", err)
+	}
+
+	// 转换结果
+	var records []models.ImageEditRecord
+	for _, result := range results {
+		record := models.ImageEditRecord{}
+		if id, ok := result["id"].(float64); ok {
+			record.ID = int(id)
+		}
+		if val, ok := result["original_image_id"].(float64); ok && val != 0 {
+			id := int(val)
+			record.OriginalImageID = &id
+		}
+		if val, ok := result["edit_type"].(string); ok {
+			record.EditType = models.EditType(val)
+		}
+		if val, ok := result["edit_prompt"].(string); ok {
+			record.EditPrompt = val
+		}
+		if val, ok := result["input_image_urls"].(string); ok {
+			record.InputImageURLs = val
+		}
+		if val, ok := result["result_image_url"].(string); ok {
+			record.ResultImageURL = val
+		}
+		if val, ok := result["local_path"].(string); ok {
+			record.LocalPath = val
+		}
+		if val, ok := result["r2_url"].(string); ok {
+			record.R2URL = val
+		}
+		if val, ok := result["status"].(string); ok {
+			record.Status = models.EditStatus(val)
+		}
+		if val, ok := result["error_message"].(string); ok {
+			record.ErrorMessage = val
+		}
+		if val, ok := result["task_id"].(string); ok {
+			record.TaskID = val
+		}
+		if val, ok := result["file_size"].(float64); ok {
+			record.FileSize = int64(val)
+		}
+		if val, ok := result["width"].(float64); ok {
+			record.Width = int(val)
+		}
+		if val, ok := result["height"].(float64); ok {
+			record.Height = int(val)
+		}
+		if val, ok := result["format"].(string); ok {
+			record.Format = val
+		}
+		if val, ok := result["created_at"].(string); ok {
+			record.CreatedAt = val
+		}
+		if val, ok := result["completed_at"].(string); ok {
+			record.CompletedAt = val
+		}
+
+		records = append(records, record)
+	}
+
+	pages := (total + req.Limit - 1) / req.Limit
+
+	return &models.EditRecordsResponse{
+		Records: records,
+		Total:   total,
+		Page:    req.Page,
+		Limit:   req.Limit,
+		Pages:   pages,
+	}, nil
+}
+
+// initEditDatabase 初始化编辑相关的数据库表
+func (d *D1Service) initEditDatabase() error {
+	createTableSQL := `
+		CREATE TABLE IF NOT EXISTS image_edit_records (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			original_image_id INTEGER,
+			edit_type TEXT NOT NULL,
+			edit_prompt TEXT NOT NULL,
+			input_image_urls TEXT NOT NULL,
+			result_image_url TEXT,
+			local_path TEXT,
+			r2_url TEXT,
+			status TEXT DEFAULT 'pending',
+			error_message TEXT,
+			task_id TEXT UNIQUE,
+			file_size INTEGER DEFAULT 0,
+			width INTEGER DEFAULT 0,
+			height INTEGER DEFAULT 0,
+			format TEXT DEFAULT '',
+			created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+			completed_at DATETIME,
+			FOREIGN KEY (original_image_id) REFERENCES image_records(id)
+		);
+	`
+
+	// 执行建表语句
+	if err := d.executeSQL(createTableSQL); err != nil {
+		return fmt.Errorf("创建编辑表失败: %v", err)
+	}
+
+	// 创建索引
+	indexSQL := `
+		CREATE INDEX IF NOT EXISTS idx_edit_task_id ON image_edit_records(task_id);
+		CREATE INDEX IF NOT EXISTS idx_edit_status ON image_edit_records(status);
+		CREATE INDEX IF NOT EXISTS idx_edit_type ON image_edit_records(edit_type);
+		CREATE INDEX IF NOT EXISTS idx_edit_created_at ON image_edit_records(created_at);
+	`
+
+	if err := d.executeSQL(indexSQL); err != nil {
+		log.Printf("警告: 创建编辑表索引失败: %v", err)
+	}
+
+	log.Println("D1编辑数据库表初始化完成")
+	return nil
 }

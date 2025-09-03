@@ -21,8 +21,17 @@ func main() {
 		log.Printf("警告: 图像服务初始化失败: %v", err)
 	}
 
+	// 创建图片编辑服务
+	var imageEditService *services.ImageEditService
+	if imageService != nil {
+		// 获取R2和D1服务实例
+		r2Service, _ := services.NewR2Service(cfg)
+		d1Service, _ := services.NewD1Service(cfg)
+		imageEditService = services.NewImageEditService(cfg, r2Service, d1Service)
+	}
+
 	// 创建处理器
-	handler := handlers.NewHandler(imageService)
+	handler := handlers.NewHandler(imageService, imageEditService)
 
 	// 设置Gin模式
 	gin.SetMode(gin.DebugMode)
