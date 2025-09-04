@@ -1,4 +1,4 @@
-module make_image_by_ai
+module huiying
 
 go 1.19
 

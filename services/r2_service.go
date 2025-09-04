@@ -20,7 +20,7 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/nfnt/resize"
 
-	"make_image_by_ai/config"
+	"huiying/config"
 )
 
 // ImageCompressionConfig 图片压缩配置

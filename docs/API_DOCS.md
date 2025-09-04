@@ -1,7 +1,7 @@
-# AI图像生成器 API 文档
+# 绘影(huiying) API 文档
 
 ## 概述
-AI图像生成器提供完整的图像生成、翻译和记录管理功能，支持中文提示词自动翻译，并将生成记录保存到Cloudflare D1数据库。
+绘影(huiying)提供完整的图像生成、翻译和记录管理功能，支持中文提示词自动翻译，并将生成记录保存到Cloudflare D1数据库。
 
 ## 基础信息
 - **Base URL**: `http://localhost:8000`
@@ -176,9 +176,9 @@ GET /images
 ## 功能特性
 
 ### 1. 智能文件命名
-生成的图片文件名格式：`ai_image_{timestamp}_{uuid}_{english_keywords}.{format}`
+生成的图片文件名格式：`huiying_image_{timestamp}_{uuid}_{english_keywords}.{format}`
 
-示例：`ai_image_20240829_143000_abc123_cute_little_kitten.jpg`
+示例：`huiying_image_20240829_143000_abc123_cute_little_kitten.jpg`
 
 ### 2. 双重存储
 - **本地存储**: 保存到 `public/static/images` 目录
@@ -209,7 +209,7 @@ GET /images
 ## 使用示例
 
 ### curl命令示例
-```bash
+```
 # 翻译文本
 curl -X POST http://localhost:8000/translate \
   -H "Content-Type: application/json" \
@@ -228,7 +228,7 @@ curl "http://localhost:8000/records/1"
 ```
 
 ### JavaScript示例
-```javascript
+```
 // 生成图像
 const response = await fetch('http://localhost:8000/generate-image', {
   method: 'POST',

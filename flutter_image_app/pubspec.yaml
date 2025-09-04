@@ -38,6 +38,7 @@ dependencies:
   universal_html: ^2.2.1  # 用于Web端下载
   path_provider: ^2.1.5   # 用于Windows端获取文件路径
   cached_network_image: ^3.4.1  # 用于缓存网络图片
+  icons_launcher: ^3.0.2
 
 dev_dependencies:
   flutter_test:

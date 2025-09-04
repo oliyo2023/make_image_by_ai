@@ -5,7 +5,7 @@ package main
 
 import (
 	"fmt"
-	"make_image_by_ai/config"
+	"huiying/config"
 )
 
 func main() {

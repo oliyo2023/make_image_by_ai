@@ -14,16 +14,17 @@ import (
 
 	"github.com/sashabaranov/go-openai"
 
-	"make_image_by_ai/config"
-	"make_image_by_ai/models"
-	"make_image_by_ai/utils"
+	"huiying/config"
+	"huiying/models"
+	"huiying/utils"
 )
 
 // ImageService 图像服务
 type ImageService struct {
-	config    *config.Config
-	r2Service *R2Service
-	d1Service *D1Service
+	config       *config.Config
+	r2Service    *R2Service
+	d1Service    *D1Service
+	emailService *EmailService
 }
 
 // NewImageService 创建图像服务实例
@@ -42,10 +43,14 @@ func NewImageService(cfg *config.Config) (*ImageService, error) {
 		d1Service = nil
 	}
 
+	// 创建邮件服务
+	emailService := NewEmailService(cfg)
+
 	return &ImageService{
-		config:    cfg,
-		r2Service: r2Service,
-		d1Service: d1Service,
+		config:       cfg,
+		r2Service:    r2Service,
+		d1Service:    d1Service,
+		emailService: emailService,
 	}, nil
 }
 
@@ -54,6 +59,8 @@ func (s *ImageService) GenerateImage(req *models.ImageGenerationRequest) (*model
 	// 翻译提示词
 	translatedPrompt, err := s.translatePrompt(req.Prompt)
 	if err != nil {
+		// 发送错误通知邮件
+		go s.emailService.SendErrorNotification(req.Prompt, fmt.Errorf("翻译失败: %v", err))
 		return nil, fmt.Errorf("翻译失败: %v", err)
 	}
 
@@ -69,12 +76,15 @@ func (s *ImageService) GenerateImage(req *models.ImageGenerationRequest) (*model
 	// 生成图像
 	imageURL, err := s.generateImageWithOpenRouter(translatedPrompt, model)
 	if err != nil {
+		// 发送错误通知邮件
+		go s.emailService.SendErrorNotification(req.Prompt, fmt.Errorf("图像生成失败: %v", err))
 		return nil, fmt.Errorf("图像生成失败: %v", err)
 	}
 
 	// 保存图像（优先使用 R2，失败时回退到本地存储）
 	var finalURL string
 	var imageMetadata *utils.ImageMetadata
+	var record *models.ImageRecord
 	if s.r2Service != nil {
 		// 先保存到本地获取元数据，然后尝试上传到 R2
 		compressionConfig := &utils.ImageCompressionConfig{
@@ -87,6 +97,8 @@ func (s *ImageService) GenerateImage(req *models.ImageGenerationRequest) (*model
 		var err error
 		imageMetadata, err = utils.DownloadAndSaveImage(imageURL, req.Prompt, translatedPrompt, s.config.ImagesDir(), compressionConfig)
 		if err != nil {
+			// 发送错误通知邮件
+			go s.emailService.SendErrorNotification(req.Prompt, fmt.Errorf("保存图像失败: %v", err))
 			return nil, fmt.Errorf("保存图像失败: %v", err)
 		}
 
@@ -102,7 +114,7 @@ func (s *ImageService) GenerateImage(req *models.ImageGenerationRequest) (*model
 
 		// 保存记录到D1数据库（使用真实的图片元数据）
 		if s.d1Service != nil {
-			record := &models.ImageRecord{
+			record = &models.ImageRecord{
 				OriginalPrompt: req.Prompt,
 				EnglishPrompt:  translatedPrompt,
 				LocalPath:      imageMetadata.LocalPath,
@@ -128,6 +140,8 @@ func (s *ImageService) GenerateImage(req *models.ImageGenerationRequest) (*model
 		}
 		imageMetadata, err := utils.DownloadAndSaveImage(imageURL, req.Prompt, translatedPrompt, s.config.ImagesDir(), compressionConfig)
 		if err != nil {
+			// 发送错误通知邮件
+			go s.emailService.SendErrorNotification(req.Prompt, fmt.Errorf("保存图像失败: %v", err))
 			return nil, fmt.Errorf("保存图像失败: %v", err)
 		}
 		finalURL = imageMetadata.LocalURL
@@ -135,7 +149,7 @@ func (s *ImageService) GenerateImage(req *models.ImageGenerationRequest) (*model
 
 		// 保存记录到D1数据库（使用真实的图片元数据）
 		if s.d1Service != nil {
-			record := &models.ImageRecord{
+			record = &models.ImageRecord{
 				OriginalPrompt: req.Prompt,
 				EnglishPrompt:  translatedPrompt,
 				LocalPath:      imageMetadata.LocalPath,
@@ -150,6 +164,11 @@ func (s *ImageService) GenerateImage(req *models.ImageGenerationRequest) (*model
 				log.Printf("警告: 保存图片记录到D1失败: %v", err)
 			}
 		}
+	}
+
+	// 发送成功通知邮件（异步发送，避免阻塞主流程）
+	if record != nil {
+		go s.emailService.SendNotification(record)
 	}
 
 	// 返回响应

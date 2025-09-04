@@ -9,9 +9,9 @@ import (
 	"net/http"
 	"time"
 
-	"make_image_by_ai/config"
-	"make_image_by_ai/models"
-	"make_image_by_ai/utils"
+	"huiying/config"
+	"huiying/models"
+	"huiying/utils"
 )
 
 // ImageEditService 图片编辑服务

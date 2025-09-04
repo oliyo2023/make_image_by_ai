@@ -6,9 +6,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	"make_image_by_ai/config"
-	"make_image_by_ai/handlers"
-	"make_image_by_ai/services"
+	"huiying/config"
+	"huiying/handlers"
+	"huiying/services"
 )
 
 func main() {

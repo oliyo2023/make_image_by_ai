@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
-	"make_image_by_ai/config"
-	"make_image_by_ai/models"
+	"huiying/config"
+	"huiying/models"
 )
 
 // D1Service Cloudflare D1 数据库服务

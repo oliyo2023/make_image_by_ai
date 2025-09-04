@@ -16,10 +16,10 @@ import (
 	"strings"
 	"time"
 
-	"make_image_by_ai/models"
-
 	"github.com/google/uuid"
 	"github.com/nfnt/resize"
+
+	"huiying/models"
 )
 
 // ImageCompressionConfig 图片压缩配置

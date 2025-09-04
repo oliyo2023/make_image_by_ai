@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"make_image_by_ai/utils"
+	"huiying/utils"
 )
 
 func main() {

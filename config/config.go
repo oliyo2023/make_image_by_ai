@@ -31,6 +31,9 @@ type Config struct {
 
 	// 日志配置
 	Logging LoggingConfig `toml:"logging"`
+
+	// SMTP 邮件配置
+	SMTP SMTPConfig `toml:"smtp"`
 }
 
 // ServerConfig 服务器配置
@@ -86,6 +89,17 @@ type LoggingConfig struct {
 	File   string `toml:"file"`
 }
 
+// SMTPConfig SMTP邮件配置
+type SMTPConfig struct {
+	Host     string `toml:"host"`
+	Port     int    `toml:"port"`
+	Username string `toml:"username"`
+	Password string `toml:"password"`
+	From     string `toml:"from"`
+	To       string `toml:"to"`
+	Enable   bool   `toml:"enable"`
+}
+
 // LoadConfig 加载配置，优先从TOML文件，其次从环境变量
 func LoadConfig() *Config {
 	// 设置默认配置
@@ -139,6 +153,15 @@ func getDefaultConfig() *Config {
 			Level:  "info",
 			Format: "text",
 			File:   "",
+		},
+		SMTP: SMTPConfig{
+			Host:     "smtp.qq.com",
+			Port:     587,
+			Username: "",
+			Password: "",
+			From:     "",
+			To:       "",
+			Enable:   false,
 		},
 	}
 }
@@ -263,6 +286,31 @@ func loadFromEnv(config *Config) {
 	if file := os.Getenv("LOG_FILE"); file != "" {
 		config.Logging.File = file
 	}
+
+	// SMTP 邮件配置
+	if host := os.Getenv("SMTP_HOST"); host != "" {
+		config.SMTP.Host = host
+	}
+	if port := os.Getenv("SMTP_PORT"); port != "" {
+		if p, err := strconv.Atoi(port); err == nil {
+			config.SMTP.Port = p
+		}
+	}
+	if username := os.Getenv("SMTP_USERNAME"); username != "" {
+		config.SMTP.Username = username
+	}
+	if password := os.Getenv("SMTP_PASSWORD"); password != "" {
+		config.SMTP.Password = password
+	}
+	if from := os.Getenv("SMTP_FROM"); from != "" {
+		config.SMTP.From = from
+	}
+	if to := os.Getenv("SMTP_TO"); to != "" {
+		config.SMTP.To = to
+	}
+	if enable := os.Getenv("SMTP_ENABLE"); enable != "" {
+		config.SMTP.Enable = enable == "true"
+	}
 }
 
 // validateConfig 验证配置
@@ -281,6 +329,28 @@ func validateConfig(config *Config) error {
 
 	if config.ImageProcessing.Quality < 1 || config.ImageProcessing.Quality > 100 {
 		return fmt.Errorf("无效的图片质量设置: %d (应在1-100之间)", config.ImageProcessing.Quality)
+	}
+
+	// 验证SMTP配置
+	if config.SMTP.Enable {
+		if config.SMTP.Host == "" {
+			return fmt.Errorf("SMTP主机未设置")
+		}
+		if config.SMTP.Port <= 0 {
+			return fmt.Errorf("SMTP端口无效: %d", config.SMTP.Port)
+		}
+		if config.SMTP.Username == "" {
+			return fmt.Errorf("SMTP用户名未设置")
+		}
+		if config.SMTP.Password == "" {
+			return fmt.Errorf("SMTP密码未设置")
+		}
+		if config.SMTP.From == "" {
+			return fmt.Errorf("SMTP发件人未设置")
+		}
+		if config.SMTP.To == "" {
+			return fmt.Errorf("SMTP收件人未设置")
+		}
 	}
 
 	return nil
@@ -396,4 +466,39 @@ func (c *Config) D1DatabaseID() string {
 // D1DatabaseName 获取D1数据库名称
 func (c *Config) D1DatabaseName() string {
 	return c.CloudflareD1.DatabaseName
+}
+
+// SMTPHost 获取SMTP主机
+func (c *Config) SMTPHost() string {
+	return c.SMTP.Host
+}
+
+// SMTPPort 获取SMTP端口
+func (c *Config) SMTPPort() int {
+	return c.SMTP.Port
+}
+
+// SMTPUsername 获取SMTP用户名
+func (c *Config) SMTPUsername() string {
+	return c.SMTP.Username
+}
+
+// SMTPPassword 获取SMTP密码
+func (c *Config) SMTPPassword() string {
+	return c.SMTP.Password
+}
+
+// SMTPFrom 获取SMTP发件人
+func (c *Config) SMTPFrom() string {
+	return c.SMTP.From
+}
+
+// SMTPTo 获取SMTP收件人
+func (c *Config) SMTPTo() string {
+	return c.SMTP.To
+}
+
+// SMTPEnable 获取SMTP启用状态
+func (c *Config) SMTPEnable() bool {
+	return c.SMTP.Enable
 }

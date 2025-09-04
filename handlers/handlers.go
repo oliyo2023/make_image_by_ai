@@ -1,16 +1,16 @@
 package handlers
 
 import (
-	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
 
-	"make_image_by_ai/models"
-	"make_image_by_ai/services"
+	"huiying/models"
+	"huiying/services"
 )
 
 // Handler HTTP处理器
@@ -187,8 +187,8 @@ func (h *Handler) GetImageRecordByID(c *gin.Context) {
 	idParam := c.Param("id")
 	log.Printf("收到获取图片记录请求: ID=%s", idParam)
 
-	id := 0
-	if _, err := fmt.Sscanf(idParam, "%d", &id); err != nil {
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": "无效的ID参数",
 		})
